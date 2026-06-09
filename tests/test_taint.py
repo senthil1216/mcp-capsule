@@ -21,9 +21,7 @@ def test_exact_substring_match():
 
 def test_shingle_fuzzy_match_survives_light_edits():
     store = TaintStore()
-    store.register(
-        "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu"
-    )
+    store.register("alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu")
     # Same long phrase with a couple words changed -> shingle overlap still fires.
     edited = "XX beta gamma delta epsilon zeta eta theta iota kappa lambda YY"
     assert store.is_tainted(edited)

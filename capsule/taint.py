@@ -22,7 +22,6 @@ import hashlib
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from capsule.models import TaintLabel
 
@@ -75,7 +74,7 @@ class TaintMatch:
 
 
 class TaintStore:
-    def __init__(self, mirror_path: Optional[str | Path] = None):
+    def __init__(self, mirror_path: str | Path | None = None):
         self._entries: dict[str, TaintEntry] = {}
         self._counter = 0
         self.mirror_path = Path(mirror_path) if mirror_path else None
@@ -89,9 +88,9 @@ class TaintStore:
         text: str,
         *,
         source_type: str = "repo_file",
-        path: Optional[str] = None,
+        path: str | None = None,
         taint: str = "untrusted_repo_content",
-        content_ref: Optional[str] = None,
+        content_ref: str | None = None,
     ) -> TaintLabel:
         ref = content_ref or self._next_ref()
         sh = shingles(text)

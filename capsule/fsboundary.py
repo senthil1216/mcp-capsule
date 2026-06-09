@@ -15,7 +15,6 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 # Canonical host-secret roots the attack corpus targets. Denied even if a
 # symlink inside the workspace resolves into one of them.
@@ -32,7 +31,7 @@ HOST_SECRET_ROOTS = [
 class PathVerdict:
     allowed: bool
     reason: str
-    resolved: Optional[Path]
+    resolved: Path | None
 
 
 def _expanded_secret_roots() -> list[Path]:

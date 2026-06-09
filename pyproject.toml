@@ -14,7 +14,7 @@ dependencies = [
 [project.optional-dependencies]
 mcp = ["fastmcp>=2.0"]
 sandbox = ["docker>=7.0"]
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "ruff>=0.6"]
 
 [project.scripts]
 capsule = "capsule.cli:main"
@@ -33,3 +33,14 @@ testpaths = ["tests"]
 markers = [
     "docker: integration tests that require a running container runtime",
 ]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B"]
+# UP042: keep `(str, Enum)` — switching to StrEnum changes str(Decision.X) from
+# "Decision.allow" to "allow", which other code/format assumptions rely on.
+ignore = ["UP042"]
+

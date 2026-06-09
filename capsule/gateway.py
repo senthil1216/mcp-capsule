@@ -15,9 +15,10 @@ from __future__ import annotations
 
 import os
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
 from capsule import approvals as _approvals_mod
 from capsule import audit as _audit_mod
@@ -48,15 +49,15 @@ _EXECUTING_DECISIONS = {Decision.ALLOW, Decision.FLAG, Decision.SANDBOX}
 
 @dataclass
 class HandlerOutput:
-    output: Optional[str] = None
-    error: Optional[str] = None
+    output: str | None = None
+    error: str | None = None
     ok: bool = True
-    content_ref: Optional[str] = None
-    taint: Optional[TaintLabel] = None
+    content_ref: str | None = None
+    taint: TaintLabel | None = None
     taint_flags: list[str] = field(default_factory=list)
     sandbox_params: dict[str, Any] = field(default_factory=dict)
-    approval_state: Optional[str] = None
-    granted_scope: Optional[str] = None
+    approval_state: str | None = None
+    granted_scope: str | None = None
 
 
 Handler = Callable[[ToolCall, "Gateway"], HandlerOutput]
@@ -68,20 +69,16 @@ class Gateway:
         manifest_path: str | Path | None = None,
         policy_path: str | Path | None = None,
         audit_path: str | Path | None = None,
-        taint_store: Optional[TaintStore] = None,
+        taint_store: TaintStore | None = None,
         approval_path: str | Path | None = None,
         echo_audit: bool = False,
     ):
-        self.manifest = (
-            load_manifest(manifest_path) if manifest_path else load_manifest()
-        )
+        self.manifest = load_manifest(manifest_path) if manifest_path else load_manifest()
         self.policy = load_policy(policy_path) if policy_path else load_policy()
         self.engine = PolicyEngine(self.manifest, self.policy)
         # Resolve defaults dynamically (module attributes) so tests can redirect
         # them to a temp dir without each test passing explicit paths.
-        self.audit = AuditLog(
-            audit_path or _audit_mod.DEFAULT_AUDIT_PATH, echo=echo_audit
-        )
+        self.audit = AuditLog(audit_path or _audit_mod.DEFAULT_AUDIT_PATH, echo=echo_audit)
         self.taint = taint_store or TaintStore()
         self.approvals = ApprovalQueue(approval_path or _approvals_mod.DEFAULT_APPROVAL_PATH)
         self.handlers: dict[str, Handler] = {}
@@ -99,7 +96,7 @@ class Gateway:
 
         taint_flags = self._collect_taint_flags(call)
 
-        approval_id: Optional[str] = None
+        approval_id: str | None = None
         if decision.decision in _EXECUTING_DECISIONS:
             out = self._dispatch(call)
         elif decision.decision == Decision.APPROVAL_REQUIRED:
@@ -116,7 +113,7 @@ class Gateway:
             out = HandlerOutput(
                 ok=True,
                 output=f"approval_required: enqueued as {approval_id}; "
-                       f"release with `capsule-approve approve {approval_id}`",
+                f"release with `capsule-approve approve {approval_id}`",
                 approval_state="pending",
             )
         else:  # deny
@@ -183,9 +180,7 @@ class Gateway:
                 flags.append(f"{m.taint}:{m.content_ref}:{m.kind}")
         return sorted(set(flags))
 
-    def _apply_dynamic_policy(
-        self, call: ToolCall, decision: PolicyDecision
-    ) -> PolicyDecision:
+    def _apply_dynamic_policy(self, call: ToolCall, decision: PolicyDecision) -> PolicyDecision:
         """Per-call conditions that can change the static decision:
         the read_file workspace boundary and content-based taint escalation."""
         if call.tool == "read_file":
@@ -193,18 +188,14 @@ class Gateway:
         decision = self._apply_taint(call, decision)
         return decision
 
-    def _apply_read_file_boundary(
-        self, call: ToolCall, decision: PolicyDecision
-    ) -> PolicyDecision:
+    def _apply_read_file_boundary(self, call: ToolCall, decision: PolicyDecision) -> PolicyDecision:
         requested = call.arguments.get("path")
         if not requested:
             return self.engine.escalate(decision, Decision.DENY, "read_file:no_path")
         workspace = call.workspace or os.getcwd()
         verdict = classify_read_path(workspace, str(requested))
         if not verdict.allowed:
-            return self.engine.escalate(
-                decision, Decision.DENY, f"read_file:{verdict.reason}"
-            )
+            return self.engine.escalate(decision, Decision.DENY, f"read_file:{verdict.reason}")
         return decision
 
     def _apply_taint(self, call: ToolCall, decision: PolicyDecision) -> PolicyDecision:
@@ -230,9 +221,7 @@ class Gateway:
                 return self.engine.escalate(
                     decision, Decision.DENY, "tainted_content_in_network_command"
                 )
-            return self.engine.escalate(
-                decision, Decision.FLAG, "tainted_content_in_local_command"
-            )
+            return self.engine.escalate(decision, Decision.FLAG, "tainted_content_in_local_command")
         return decision
 
     @staticmethod
@@ -247,7 +236,17 @@ class Gateway:
 
     @staticmethod
     def _command_uses_network(cmd: str) -> bool:
-        net_tokens = ("curl", "wget", "nc ", "netcat", "ssh ", "scp ", "ftp",
-                      "http://", "https://", "telnet")
+        net_tokens = (
+            "curl",
+            "wget",
+            "nc ",
+            "netcat",
+            "ssh ",
+            "scp ",
+            "ftp",
+            "http://",
+            "https://",
+            "telnet",
+        )
         low = cmd.lower()
         return any(tok in low for tok in net_tokens)

@@ -17,7 +17,6 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from capsule.gateway import Gateway, HandlerOutput
 from capsule.models import ToolCall
@@ -32,7 +31,7 @@ ALLOWED_SCOPES = {"pull_request:create"}
 @dataclass
 class BrokerDecision:
     granted: bool
-    scope: Optional[str]
+    scope: str | None
     reason: str
 
 
@@ -44,8 +43,9 @@ def broker_request(tool: str, scope: str) -> BrokerDecision:
     return BrokerDecision(granted=False, scope=None, reason=f"over_broad_scope:{scope}")
 
 
-def execute_pr(*, title: str, body: str, granted_scope: str,
-               events_path: str | Path = DEFAULT_EVENTS_PATH) -> str:
+def execute_pr(
+    *, title: str, body: str, granted_scope: str, events_path: str | Path = DEFAULT_EVENTS_PATH
+) -> str:
     """Append a fake PR-created event. Returns an event reference."""
     path = Path(events_path)
     path.parent.mkdir(parents=True, exist_ok=True)

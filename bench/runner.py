@@ -25,14 +25,12 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Optional
-
-from capsule.gateway import Gateway
-from capsule.models import AttackReplayResult, ToolCall
-from capsule.tools_loader import register_default_handlers
 
 from bench import honeytokens
 from bench.sink import RecordingSink
+from capsule.gateway import Gateway
+from capsule.models import AttackReplayResult, ToolCall
+from capsule.tools_loader import register_default_handlers
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 CORPUS_DIR = _REPO_ROOT / "bench" / "corpus"
@@ -41,7 +39,7 @@ MALICIOUS_REPO = _REPO_ROOT / "examples" / "malicious-repo"
 DEFAULT_REPORT = _REPO_ROOT / "bench" / "REPORT.md"
 
 
-def _load_dir(directory: Path, names: Optional[list[str]] = None) -> list[dict]:
+def _load_dir(directory: Path, names: list[str] | None = None) -> list[dict]:
     cases = []
     for path in sorted(directory.glob("*.json")):
         case = json.loads(path.read_text())
@@ -50,22 +48,22 @@ def _load_dir(directory: Path, names: Optional[list[str]] = None) -> list[dict]:
     return cases
 
 
-def load_corpus(names: Optional[list[str]] = None) -> list[dict]:
+def load_corpus(names: list[str] | None = None) -> list[dict]:
     return _load_dir(CORPUS_DIR, names)
 
 
-def load_legitimate(names: Optional[list[str]] = None) -> list[dict]:
+def load_legitimate(names: list[str] | None = None) -> list[dict]:
     return _load_dir(LEGIT_DIR, names)
 
 
 class BenchRunner:
-    def __init__(self, base: Optional[Path] = None):
+    def __init__(self, base: Path | None = None):
         self.base = base
-        self.env: Optional[honeytokens.DisposableEnv] = None
-        self.workspace: Optional[Path] = None
-        self.sink: Optional[RecordingSink] = None
+        self.env: honeytokens.DisposableEnv | None = None
+        self.workspace: Path | None = None
+        self.sink: RecordingSink | None = None
         self._orig_home = os.environ.get("HOME")
-        self._tmp_workspace: Optional[str] = None
+        self._tmp_workspace: str | None = None
 
     # -- lifecycle ----------------------------------------------------------
     def setup(self, cases: list[dict]) -> None:
@@ -97,8 +95,7 @@ class BenchRunner:
             link = self.workspace / sym["link"]
             target_key = sym["target_key"]
             target = (
-                self.env.home / ".ssh" if target_key == "ssh_dir"
-                else self.env.path(target_key)
+                self.env.home / ".ssh" if target_key == "ssh_dir" else self.env.path(target_key)
             )
             if link.exists() or link.is_symlink():
                 link.unlink()
@@ -112,8 +109,7 @@ class BenchRunner:
         if case.get("kind") == "legitimate":
             return self._run_legitimate(case)
         if case.get("kind") == "taint":
-            return (self._run_unsafe_taint(case) if mode == "unsafe"
-                    else self._run_safe_taint(case))
+            return self._run_unsafe_taint(case) if mode == "unsafe" else self._run_safe_taint(case)
         if mode == "unsafe":
             return self._run_unsafe(case)
         return self._run_safe(case)
@@ -137,20 +133,32 @@ class BenchRunner:
         note = "tainted content sent (no gateway)"
         if network_attempted:
             try:
-                subprocess.run(args["command"], shell=True, cwd=str(self.workspace),
-                               env=dict(os.environ), capture_output=True, timeout=15)
+                subprocess.run(
+                    args["command"],
+                    shell=True,
+                    cwd=str(self.workspace),
+                    env=dict(os.environ),
+                    capture_output=True,
+                    timeout=15,
+                )
             except Exception as e:  # noqa: BLE001
                 note = f"exec_error:{e}"
             snippet = content.strip()[:40]
             reached = bool(snippet and self.sink.hits_containing(snippet))
         duration_ms = int((time.perf_counter() - start) * 1000)
         return AttackReplayResult(
-            attack=case["attack"], mode="unsafe", kind="taint",
-            actual_decision="unsafe_direct", host_secret_visible=reached,
+            attack=case["attack"],
+            mode="unsafe",
+            kind="taint",
+            actual_decision="unsafe_direct",
+            host_secret_visible=reached,
             network_attempted=network_attempted,
             network_blocked=False if network_attempted else None,
-            tainted_outbound=True, tainted_handled=False,
-            passed=reached, duration_ms=duration_ms, note=note,
+            tainted_outbound=True,
+            tainted_handled=False,
+            passed=reached,
+            duration_ms=duration_ms,
+            note=note,
         )
 
     def _run_safe_taint(self, case: dict) -> AttackReplayResult:
@@ -162,15 +170,27 @@ class BenchRunner:
         # taint store (this is the only "declaration" — the attack itself
         # declares nothing).
         pre = case["precondition"]["arguments"]["path"]
-        read_res = gw.invoke(ToolCall(call_id=f"{case['attack']}_pre", tool="read_file",
-                                      arguments={"path": pre}, workspace=str(self.workspace)))
+        read_res = gw.invoke(
+            ToolCall(
+                call_id=f"{case['attack']}_pre",
+                tool="read_file",
+                arguments={"path": pre},
+                workspace=str(self.workspace),
+            )
+        )
         content = read_res.output or ""
 
         # Step 2: outbound attack pasting the content verbatim, source_refs=[]
         # (default) — enforcement must rely on content match, not declaration.
         args = self._taint_args(case, content)
-        out = gw.invoke(ToolCall(call_id=case["attack"], tool=case["tool"],
-                                 arguments=args, workspace=str(self.workspace)))
+        out = gw.invoke(
+            ToolCall(
+                call_id=case["attack"],
+                tool=case["tool"],
+                arguments=args,
+                workspace=str(self.workspace),
+            )
+        )
         duration_ms = int((time.perf_counter() - start) * 1000)
 
         actual = out.decision.value
@@ -182,12 +202,16 @@ class BenchRunner:
             leaked = bool(snippet and self.sink.hits_containing(snippet))
         tainted_handled = actual in {"flag", "approval_required", "deny"}
         return AttackReplayResult(
-            attack=case["attack"], mode="safe", kind="taint",
-            expected_decision=expected, actual_decision=actual,
+            attack=case["attack"],
+            mode="safe",
+            kind="taint",
+            expected_decision=expected,
+            actual_decision=actual,
             host_secret_visible=leaked,
             network_attempted=case["taint_arg"] == "network_command",
             network_blocked=(not leaked) if case["taint_arg"] == "network_command" else None,
-            tainted_outbound=True, tainted_handled=tainted_handled,
+            tainted_outbound=True,
+            tainted_handled=tainted_handled,
             passed=(actual == expected) and not leaked,
             duration_ms=duration_ms,
             note=f"taint flags={out.taint_flags}",
@@ -206,8 +230,12 @@ class BenchRunner:
             cmd = os.path.expandvars(case["arguments"]["command"])
             try:
                 subprocess.run(
-                    cmd, shell=True, cwd=str(self.workspace),
-                    env=dict(os.environ), capture_output=True, timeout=15,
+                    cmd,
+                    shell=True,
+                    cwd=str(self.workspace),
+                    env=dict(os.environ),
+                    capture_output=True,
+                    timeout=15,
                 )
             except Exception as e:  # noqa: BLE001
                 note = f"exec_error:{e}"
@@ -227,13 +255,16 @@ class BenchRunner:
 
         duration_ms = int((time.perf_counter() - start) * 1000)
         return AttackReplayResult(
-            attack=case["attack"], mode="unsafe", kind=kind,
+            attack=case["attack"],
+            mode="unsafe",
+            kind=kind,
             actual_decision="unsafe_direct",
             host_secret_visible=host_secret_visible,
             network_attempted=network_attempted,
             network_blocked=False if network_attempted else None,
             passed=host_secret_visible,  # baseline reproduced: the attack reached
-            duration_ms=duration_ms, note=note,
+            duration_ms=duration_ms,
+            note=note,
         )
 
     def _raw_read(self, path: str) -> str:
@@ -252,8 +283,14 @@ class BenchRunner:
         if "command" in args:
             args["command"] = os.path.expandvars(args["command"])
         start = time.perf_counter()
-        res = gw.invoke(ToolCall(call_id=f"legit_{case['attack']}", tool=case["tool"],
-                                 arguments=args, workspace=str(self.workspace)))
+        res = gw.invoke(
+            ToolCall(
+                call_id=f"legit_{case['attack']}",
+                tool=case["tool"],
+                arguments=args,
+                workspace=str(self.workspace),
+            )
+        )
         duration_ms = int((time.perf_counter() - start) * 1000)
         actual = res.decision.value
         expected = case.get("expected_safe_decision")
@@ -266,10 +303,14 @@ class BenchRunner:
         if case["tool"] == "run_command":
             note = "sandbox decision correct; execution success needs runtime (D)"
         return AttackReplayResult(
-            attack=case["attack"], mode="safe", kind="legitimate",
-            expected_decision=expected, actual_decision=actual,
+            attack=case["attack"],
+            mode="safe",
+            kind="legitimate",
+            expected_decision=expected,
+            actual_decision=actual,
             passed=(actual == expected) and not denied,
-            duration_ms=duration_ms, note=note,
+            duration_ms=duration_ms,
+            note=note,
         )
 
     # ---- safe (through the gateway) ----
@@ -286,8 +327,12 @@ class BenchRunner:
 
         sentinel = self.env.sentinels.get(case.get("sentinel"), None)
         result = gw.invoke(
-            ToolCall(call_id=f"bench_{case['attack']}", tool=case["tool"],
-                     arguments=arguments, workspace=str(self.workspace))
+            ToolCall(
+                call_id=f"bench_{case['attack']}",
+                tool=case["tool"],
+                arguments=arguments,
+                workspace=str(self.workspace),
+            )
         )
         duration_ms = int((time.perf_counter() - start) * 1000)
 
@@ -295,7 +340,7 @@ class BenchRunner:
         expected = case.get("expected_safe_decision")
         host_secret_visible = bool(sentinel and result.output and sentinel in result.output)
         network_attempted = kind == "network_exfil"
-        network_blocked: Optional[bool] = None
+        network_blocked: bool | None = None
         note = ""
         passed = False
 
@@ -315,17 +360,26 @@ class BenchRunner:
             passed = (actual == expected) and not host_secret_visible
 
         return AttackReplayResult(
-            attack=case["attack"], mode="safe", kind=kind,
-            expected_decision=expected, actual_decision=actual,
+            attack=case["attack"],
+            mode="safe",
+            kind=kind,
+            expected_decision=expected,
+            actual_decision=actual,
             host_secret_visible=host_secret_visible,
-            network_attempted=network_attempted, network_blocked=network_blocked,
-            passed=passed, duration_ms=duration_ms, note=note,
+            network_attempted=network_attempted,
+            network_blocked=network_blocked,
+            passed=passed,
+            duration_ms=duration_ms,
+            note=note,
         )
 
 
-def run(modes: list[str], attacks: Optional[list[str]] = None,
-        report_path: Path = DEFAULT_REPORT,
-        include_legitimate: bool = True) -> list[AttackReplayResult]:
+def run(
+    modes: list[str],
+    attacks: list[str] | None = None,
+    report_path: Path = DEFAULT_REPORT,
+    include_legitimate: bool = True,
+) -> list[AttackReplayResult]:
     from bench.analyze import build_report
 
     cases = load_corpus(attacks)
@@ -349,10 +403,12 @@ def run(modes: list[str], attacks: Optional[list[str]] = None,
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="bench.runner")
-    parser.add_argument("--mode", default="unsafe",
-                        help="unsafe | safe | both (comma-separated also accepted)")
-    parser.add_argument("--attacks", default=None,
-                        help="comma-separated attack names; default = all")
+    parser.add_argument(
+        "--mode", default="unsafe", help="unsafe | safe | both (comma-separated also accepted)"
+    )
+    parser.add_argument(
+        "--attacks", default=None, help="comma-separated attack names; default = all"
+    )
     parser.add_argument("--report", default=str(DEFAULT_REPORT))
     args = parser.parse_args(argv)
 
@@ -365,9 +421,11 @@ def main(argv: list[str] | None = None) -> int:
     results = run(modes, attacks, Path(args.report))
     for r in results:
         flag = "OK " if r.passed else "-- "
-        print(f"[{flag}] {r.mode:6} {r.attack:22} decision={r.actual_decision} "
-              f"secret_visible={r.host_secret_visible} blocked={r.network_blocked} "
-              f"{r.note}")
+        print(
+            f"[{flag}] {r.mode:6} {r.attack:22} decision={r.actual_decision} "
+            f"secret_visible={r.host_secret_visible} blocked={r.network_blocked} "
+            f"{r.note}"
+        )
     print(f"\nReport written to {args.report}")
     return 0
 

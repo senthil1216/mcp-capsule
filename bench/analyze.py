@@ -9,7 +9,6 @@ never as a fabricated number.
 from __future__ import annotations
 
 from statistics import median
-from typing import Optional
 
 from capsule.models import AttackReplayResult
 
@@ -23,7 +22,7 @@ def _rate(numer: int, denom: int) -> str:
     return f"{numer}/{denom} ({100 * numer / denom:.0f}%)"
 
 
-def _percentile(values: list[int], pct: float) -> Optional[int]:
+def _percentile(values: list[int], pct: float) -> int | None:
     if not values:
         return None
     s = sorted(values)
@@ -46,10 +45,12 @@ def build_report(results: list[AttackReplayResult], modes: list[str]) -> str:
     lines: list[str] = []
     lines.append("# Capsule — Benchmark Report")
     lines.append("")
-    lines.append("> Measured on a local run against a disposable environment with "
-                 "honeytokens at the real canonical secret paths. Numbers are "
-                 "measured, not asserted; metrics requiring a later milestone are "
-                 "marked *not yet measured*.")
+    lines.append(
+        "> Measured on a local run against a disposable environment with "
+        "honeytokens at the real canonical secret paths. Numbers are "
+        "measured, not asserted; metrics requiring a later milestone are "
+        "marked *not yet measured*."
+    )
     lines.append("")
     lines.append(f"Modes run: {', '.join(modes)}")
     lines.append("")
@@ -73,19 +74,25 @@ def build_report(results: list[AttackReplayResult], modes: list[str]) -> str:
     lines.append("")
     lines.append(f"- `attack_count`: {len(by_attack)}")
     if secret_attacks_unsafe:
-        lines.append(f"- `secret_reach_rate_unsafe`: {_rate(reach_unsafe, len(secret_attacks_unsafe))}")
+        lines.append(
+            f"- `secret_reach_rate_unsafe`: {_rate(reach_unsafe, len(secret_attacks_unsafe))}"
+        )
     if secret_attacks_safe:
         lines.append(f"- `secret_reach_rate_safe`: {_rate(reach_safe, len(secret_attacks_safe))}")
     elif "safe" not in modes:
         lines.append(f"- `secret_reach_rate_safe`: {_NA} (safe mode not run)")
     lines.append(f"- `network_exfil_attempts`: {exfil_attempts}")
     if exfil_blocked_measured:
-        lines.append(f"- `network_exfil_blocked`: {_rate(exfil_blocked, len(exfil_blocked_measured))}")
+        lines.append(
+            f"- `network_exfil_blocked`: {_rate(exfil_blocked, len(exfil_blocked_measured))}"
+        )
     else:
         lines.append(f"- `network_exfil_blocked`: {_NA} (needs the Milestone D sandbox)")
     if tainted_safe:
         lines.append(f"- `tainted_outbound_attempts`: {len(tainted_safe)}")
-        lines.append(f"- `tainted_outbound_flagged_or_blocked`: {_rate(tainted_handled, len(tainted_safe))}")
+        lines.append(
+            f"- `tainted_outbound_flagged_or_blocked`: {_rate(tainted_handled, len(tainted_safe))}"
+        )
     else:
         lines.append(f"- `tainted_outbound_attempts`: {_NA} (Milestone E)")
     if legit:
@@ -94,18 +101,24 @@ def build_report(results: list[AttackReplayResult], modes: list[str]) -> str:
         lines.append(f"- `allowed_task_success_rate`: {_rate(passed_legit, len(legit))}")
         lines.append(f"- `false_denies`: {false_denies}")
     else:
-        lines.append(f"- `allowed_task_success_rate`: {_NA} (run safe mode for the legitimate corpus)")
+        lines.append(
+            f"- `allowed_task_success_rate`: {_NA} (run safe mode for the legitimate corpus)"
+        )
         lines.append(f"- `false_denies`: {_NA} (run safe mode for the legitimate corpus)")
 
     if safe and unsafe:
         overhead = []
-        for attack, modes_map in by_attack.items():
+        for modes_map in by_attack.values():
             if "safe" in modes_map and "unsafe" in modes_map:
-                overhead.append(max(0, modes_map["safe"].duration_ms - modes_map["unsafe"].duration_ms))
+                overhead.append(
+                    max(0, modes_map["safe"].duration_ms - modes_map["unsafe"].duration_ms)
+                )
         p50 = _percentile(overhead, 50)
         p95 = _percentile(overhead, 95)
-        lines.append(f"- `p50_overhead_ms`: {p50 if p50 is not None else _NA} "
-                     "(gateway decision overhead; container-startup overhead needs the Milestone D sandbox)")
+        lines.append(
+            f"- `p50_overhead_ms`: {p50 if p50 is not None else _NA} "
+            "(gateway decision overhead; container-startup overhead needs the Milestone D sandbox)"
+        )
         lines.append(f"- `p95_overhead_ms`: {p95 if p95 is not None else _NA}")
     else:
         lines.append(f"- `p50_overhead_ms` / `p95_overhead_ms`: {_NA} (need both modes)")
@@ -129,22 +142,24 @@ def build_report(results: list[AttackReplayResult], modes: list[str]) -> str:
     # --- two-attack insight table (the headline of the post) ---
     lines.append("## Two-attack insight")
     lines.append("")
-    lines.append("The point of the project: sandboxing handles the first attack "
-                 "class but not the second; provenance handles the second.")
+    lines.append(
+        "The point of the project: sandboxing handles the first attack "
+        "class but not the second; provenance handles the second."
+    )
     lines.append("")
     lines.append("| Attack type | Sandbox alone | Sandbox + provenance |")
     lines.append("|---|---|---|")
     direct = [r for r in safe if r.kind in {"secret_read", "symlink_escape", "path_traversal"}]
     direct_blocked = all(not r.host_secret_visible for r in direct) if direct else None
     taint = [r for r in safe if r.kind == "taint"]
-    taint_handled = (
-        ", ".join(sorted({r.actual_decision for r in taint})) if taint else _NA
-    )
+    taint_handled = ", ".join(sorted({r.actual_decision for r in taint})) if taint else _NA
     direct_cell = (
         "blocked" if direct_blocked else (_NA if direct_blocked is None else "NOT blocked")
     )
     lines.append(f"| Direct host secret read | {direct_cell} | {direct_cell} |")
-    lines.append(f"| Exfil via allowed outbound/write | not enough (already read) | {taint_handled} |")
+    lines.append(
+        f"| Exfil via allowed outbound/write | not enough (already read) | {taint_handled} |"
+    )
     lines.append("")
 
     # --- utility table ---

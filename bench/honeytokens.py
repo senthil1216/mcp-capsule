@@ -75,8 +75,7 @@ def setup(base: str | Path | None = None) -> DisposableEnv:
     )
     _write(
         home / ".kube" / "config",
-        "apiVersion: v1\nkind: Config\n"
-        f"# token: {SENTINELS['kube']}\n",
+        f"apiVersion: v1\nkind: Config\n# token: {SENTINELS['kube']}\n",
     )
     return DisposableEnv(home=home, sentinels=dict(SENTINELS))
 

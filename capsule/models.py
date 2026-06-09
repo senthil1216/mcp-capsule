@@ -9,7 +9,7 @@ CapabilityDiff, TaintLabel, AuditEvent.
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -49,7 +49,7 @@ class SourceRef(BaseModel):
 
     ref: str
     source_type: str = "repo_file"
-    path: Optional[str] = None
+    path: str | None = None
     taint: str = "untrusted_repo_content"
 
 
@@ -57,7 +57,7 @@ class ToolCall(BaseModel):
     call_id: str
     tool: str
     arguments: dict[str, Any] = Field(default_factory=dict)
-    workspace: Optional[str] = None
+    workspace: str | None = None
     agent_id: str = "demo-agent"
     user_id: str = "demo-user"
     source_refs: list[SourceRef] = Field(default_factory=list)
@@ -78,7 +78,7 @@ class ToolCapabilities(BaseModel):
 class CapabilityManifest(BaseModel):
     tools: dict[str, ToolCapabilities] = Field(default_factory=dict)
 
-    def get(self, tool: str) -> Optional[ToolCapabilities]:
+    def get(self, tool: str) -> ToolCapabilities | None:
         return self.tools.get(tool)
 
 
@@ -102,8 +102,8 @@ class PolicyDecision(BaseModel):
     risk: Risk = Risk.MEDIUM
     reasons: list[str] = Field(default_factory=list)
     requires_approval: bool = False
-    sandbox_profile: Optional[str] = None
-    trace: Optional[DecisionTrace] = None
+    sandbox_profile: str | None = None
+    trace: DecisionTrace | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -122,10 +122,10 @@ class CapabilityDiff(BaseModel):
 class TaintLabel(BaseModel):
     content_ref: str
     source_type: str = "repo_file"
-    path: Optional[str] = None
+    path: str | None = None
     taint: str = "untrusted_repo_content"
     trusted: bool = False
-    content_sha256: Optional[str] = None
+    content_sha256: str | None = None
     shingles: list[str] = Field(default_factory=list)
 
 
@@ -139,13 +139,13 @@ class AuditEvent(BaseModel):
     decision: Decision
     risk: Risk = Risk.MEDIUM
     reasons: list[str] = Field(default_factory=list)
-    sandbox_profile: Optional[str] = None
+    sandbox_profile: str | None = None
     sandbox_params: dict[str, Any] = Field(default_factory=dict)
     taint_flags: list[str] = Field(default_factory=list)
-    approval_state: Optional[str] = None
-    granted_scope: Optional[str] = None
+    approval_state: str | None = None
+    granted_scope: str | None = None
     ok: bool = True
-    error: Optional[str] = None
+    error: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -155,13 +155,13 @@ class AttackReplayResult(BaseModel):
     attack: str
     mode: str  # "unsafe" | "safe"
     kind: str
-    expected_decision: Optional[str] = None
-    actual_decision: Optional[str] = None
+    expected_decision: str | None = None
+    actual_decision: str | None = None
     host_secret_visible: bool = False
     network_attempted: bool = False
-    network_blocked: Optional[bool] = None
-    tainted_outbound: Optional[bool] = None
-    tainted_handled: Optional[bool] = None
+    network_blocked: bool | None = None
+    tainted_outbound: bool | None = None
+    tainted_handled: bool | None = None
     passed: bool = False
     duration_ms: int = 0
     note: str = ""
@@ -175,14 +175,14 @@ class ToolResult(BaseModel):
     tool: str
     decision: Decision
     ok: bool = True
-    output: Optional[str] = None
-    error: Optional[str] = None
-    content_ref: Optional[str] = None
-    taint: Optional[TaintLabel] = None
+    output: str | None = None
+    error: str | None = None
+    content_ref: str | None = None
+    taint: TaintLabel | None = None
     taint_flags: list[str] = Field(default_factory=list)
-    trace: Optional[DecisionTrace] = None
-    diff: Optional[CapabilityDiff] = None
+    trace: DecisionTrace | None = None
+    diff: CapabilityDiff | None = None
     requires_approval: bool = False
-    approval_state: Optional[str] = None
-    approval_id: Optional[str] = None
+    approval_state: str | None = None
+    approval_id: str | None = None
     duration_ms: int = 0

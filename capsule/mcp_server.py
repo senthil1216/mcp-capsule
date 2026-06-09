@@ -13,7 +13,7 @@ out-of-band channel, never a blocking prompt here.
 from __future__ import annotations
 
 import os
-from typing import Any, Optional
+from typing import Any
 
 from fastmcp import FastMCP
 
@@ -23,7 +23,7 @@ from capsule.tools_loader import register_default_handlers
 
 
 def build_server(
-    workspace: Optional[str] = None, gateway: Optional[Gateway] = None
+    workspace: str | None = None, gateway: Gateway | None = None
 ) -> tuple[FastMCP, Gateway]:
     """Build a FastMCP server backed by a Capsule gateway.
 
@@ -35,8 +35,9 @@ def build_server(
     mcp: FastMCP = FastMCP("capsule")
     counter = {"n": 0}
 
-    def _invoke(tool: str, arguments: dict[str, Any],
-                source_refs: Optional[list[dict]] = None) -> dict:
+    def _invoke(
+        tool: str, arguments: dict[str, Any], source_refs: list[dict] | None = None
+    ) -> dict:
         counter["n"] += 1
         call = ToolCall(
             call_id=f"mcp_{counter['n']:03d}",

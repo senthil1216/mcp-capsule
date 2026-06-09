@@ -15,7 +15,6 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Optional
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_APPROVAL_PATH = _REPO_ROOT / "demo" / "pending_approvals.jsonl"
@@ -31,9 +30,9 @@ class ApprovalRecord:
     requested_scope: str
     taint_flags: list[str] = field(default_factory=list)
     state: str = "pending"  # pending | approved | denied
-    granted_scope: Optional[str] = None
-    event_ref: Optional[str] = None
-    reason: Optional[str] = None
+    granted_scope: str | None = None
+    event_ref: str | None = None
+    reason: str | None = None
 
 
 class ApprovalQueue:
@@ -52,30 +51,54 @@ class ApprovalQueue:
 
     def _save(self, records: list[ApprovalRecord]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text("\n".join(json.dumps(asdict(r)) for r in records) + ("\n" if records else ""))
+        self.path.write_text(
+            "\n".join(json.dumps(asdict(r)) for r in records) + ("\n" if records else "")
+        )
 
-    def enqueue(self, *, call_id: str, tool: str, title: str, body: str,
-                requested_scope: str, taint_flags: list[str]) -> str:
+    def enqueue(
+        self,
+        *,
+        call_id: str,
+        tool: str,
+        title: str,
+        body: str,
+        requested_scope: str,
+        taint_flags: list[str],
+    ) -> str:
         records = self._load()
         new_id = f"appr_{len(records) + 1:03d}_{call_id}"
-        records.append(ApprovalRecord(
-            id=new_id, call_id=call_id, tool=tool, title=title, body=body,
-            requested_scope=requested_scope, taint_flags=taint_flags,
-        ))
+        records.append(
+            ApprovalRecord(
+                id=new_id,
+                call_id=call_id,
+                tool=tool,
+                title=title,
+                body=body,
+                requested_scope=requested_scope,
+                taint_flags=taint_flags,
+            )
+        )
         self._save(records)
         return new_id
 
     def list_pending(self) -> list[ApprovalRecord]:
         return [r for r in self._load() if r.state == "pending"]
 
-    def get(self, approval_id: str) -> Optional[ApprovalRecord]:
+    def get(self, approval_id: str) -> ApprovalRecord | None:
         for r in self._load():
             if r.id == approval_id:
                 return r
         return None
 
-    def resolve(self, approval_id: str, *, state: str, granted_scope: Optional[str],
-                event_ref: Optional[str], reason: Optional[str]) -> Optional[ApprovalRecord]:
+    def resolve(
+        self,
+        approval_id: str,
+        *,
+        state: str,
+        granted_scope: str | None,
+        event_ref: str | None,
+        reason: str | None,
+    ) -> ApprovalRecord | None:
         records = self._load()
         out = None
         for r in records:

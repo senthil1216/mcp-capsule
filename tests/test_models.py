@@ -2,10 +2,8 @@
 
 from capsule.models import (
     AuditEvent,
-    CapabilityDiff,
     Decision,
     DecisionTrace,
-    PolicyDecision,
     Risk,
     RuleEval,
     ToolCall,
@@ -35,9 +33,7 @@ def test_toolresult_roundtrip():
         policy_evaluation=[RuleEval(rule="r", matched=True, effect="sandbox")],
         final_decision=Decision.SANDBOX,
     )
-    result = ToolResult(
-        call_id="c1", tool="run_command", decision=Decision.SANDBOX, trace=trace
-    )
+    result = ToolResult(call_id="c1", tool="run_command", decision=Decision.SANDBOX, trace=trace)
     data = result.model_dump_json()
     back = ToolResult.model_validate_json(data)
     assert back.decision == Decision.SANDBOX

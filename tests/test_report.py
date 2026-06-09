@@ -25,14 +25,20 @@ def test_full_report_has_required_sections_and_no_fake_numbers():
 
         # Required metrics present.
         for metric in [
-            "attack_count", "secret_reach_rate_unsafe", "secret_reach_rate_safe",
-            "network_exfil_attempts", "tainted_outbound_attempts",
-            "allowed_task_success_rate", "false_denies",
+            "attack_count",
+            "secret_reach_rate_unsafe",
+            "secret_reach_rate_safe",
+            "network_exfil_attempts",
+            "tainted_outbound_attempts",
+            "allowed_task_success_rate",
+            "false_denies",
         ]:
             assert metric in text
 
         # Measured, not fabricated: unsafe reaches, safe does not.
-        secret = [r for r in results if r.kind in {"secret_read", "symlink_escape", "path_traversal"}]
+        secret = [
+            r for r in results if r.kind in {"secret_read", "symlink_escape", "path_traversal"}
+        ]
         assert all(r.host_secret_visible for r in secret if r.mode == "unsafe")
         assert all(not r.host_secret_visible for r in secret if r.mode == "safe")
         # Taint handled in safe mode.

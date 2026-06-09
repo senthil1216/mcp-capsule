@@ -49,15 +49,11 @@ class PolicyEngine:
 
         manifest_entry = self.manifest.get(tool)
         policy_tools: dict[str, Any] = self.policy.get("tools", {})
-        unknown_effect = (
-            self.policy.get("defaults", {}).get("unknown_tool", "deny")
-        )
+        unknown_effect = self.policy.get("defaults", {}).get("unknown_tool", "deny")
 
         # Unknown tool -> deny (default-deny is the whole point of a gateway).
         if manifest_entry is None or tool not in policy_tools:
-            rules.append(
-                RuleEval(rule="unknown_tool", matched=True, effect=unknown_effect)
-            )
+            rules.append(RuleEval(rule="unknown_tool", matched=True, effect=unknown_effect))
             trace = DecisionTrace(
                 tool=tool,
                 policy_evaluation=rules,
@@ -76,18 +72,14 @@ class PolicyEngine:
         sandbox_profile = tool_policy.get("sandbox_profile")
         reasons: list[str] = [f"manifest_default_risk={manifest_entry.default_risk.value}"]
 
-        rules.append(
-            RuleEval(rule=f"{tool}_base_decision", matched=True, effect=base.value)
-        )
+        rules.append(RuleEval(rule=f"{tool}_base_decision", matched=True, effect=base.value))
 
         # Surface the capability posture as trace rules so the trace reads like a
         # real evaluation, not a single lookup.
         caps = manifest_entry.capabilities or {}
         net_default = (caps.get("network") or {}).get("default", "none")
         if net_default == "none":
-            rules.append(
-                RuleEval(rule="network_default_deny", matched=True, effect="network=none")
-            )
+            rules.append(RuleEval(rule="network_default_deny", matched=True, effect="network=none"))
             reasons.append("network_default_deny")
         if (caps.get("process") or {}).get("shell"):
             rules.append(
@@ -96,7 +88,9 @@ class PolicyEngine:
             reasons.append("tool_requires_shell")
         if base == Decision.SANDBOX:
             rules.append(
-                RuleEval(rule="workspace_only_mount", matched=True, effect="mount=workspace_copy:rw")
+                RuleEval(
+                    rule="workspace_only_mount", matched=True, effect="mount=workspace_copy:rw"
+                )
             )
             reasons.append("workspace_only_mount")
 
