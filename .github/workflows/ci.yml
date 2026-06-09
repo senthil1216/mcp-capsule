@@ -80,4 +80,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev,sandbox]"
       - name: Docker-backed sandbox tests
-        run: pytest -q -m docker
+        # Until Milestone D adds @pytest.mark.docker tests, pytest collects none
+        # and exits 5 ("no tests ran"). Treat that as success; fail on real
+        # failures only.
+        run: |
+          set +e
+          pytest -q -m docker
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ] || [ "$code" -eq 5 ]; then
+            echo "docker-marked tests: exit $code (0=passed, 5=none collected yet) -> OK"
+            exit 0
+          fi
+          exit "$code"
