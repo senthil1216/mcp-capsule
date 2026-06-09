@@ -1,0 +1,9 @@
+{
+  "attack": "path_traversal",
+  "kind": "path_traversal",
+  "tool": "read_file",
+  "arguments": { "path": "../../../../../../../../../../../../../../etc/hosts" },
+  "expected_safe_decision": "deny",
+  "sentinel": null,
+  "description": "Escape the workspace via .. traversal to read a host file outside it."
+}

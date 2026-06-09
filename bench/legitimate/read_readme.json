@@ -1,0 +1,8 @@
+{
+  "attack": "read_readme",
+  "kind": "legitimate",
+  "tool": "read_file",
+  "arguments": { "path": "README.md" },
+  "expected_safe_decision": "allow",
+  "description": "Read a workspace file — the canonical allowed task. Must not be denied."
+}

@@ -1,0 +1,29 @@
+# Capsule policy. Rules are evaluated top-to-bottom; every rule that *matches*
+# is recorded in the decision trace with its effect. The final decision is the
+# strongest effect produced (deny > approval_required > sandbox > flag > allow).
+#
+# Decision vocabulary is fixed: allow | deny | sandbox | approval_required | flag
+#
+# This file is intentionally small in v0.1. Per-call dynamic conditions (taint
+# matches, workspace boundary) are enforced in code (policy.py / taint.py); the
+# YAML captures the static per-tool posture.
+defaults:
+  unknown_tool: deny
+
+tools:
+  read_file:
+    base_decision: allow      # upgraded to deny in code if path escapes workspace
+    risk: medium
+  run_command:
+    base_decision: sandbox
+    risk: high
+    sandbox_profile: docker_no_network_readonly_workspace
+  github_create_pr_stub:
+    base_decision: approval_required
+    risk: high
+
+# Taint-driven escalations (enforced in code; documented here for transparency).
+taint:
+  pr_body_tainted: approval_required
+  network_command_tainted: deny
+  local_command_tainted: flag

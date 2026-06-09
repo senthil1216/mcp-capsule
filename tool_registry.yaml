@@ -1,0 +1,46 @@
+# Capability manifest — the declared authority each tool is allowed to request.
+# The gateway interprets these blocks to build the capability diff and to drive
+# policy. This is the source of truth for "what should this tool be able to do".
+tools:
+  read_file:
+    description: Read a file from the workspace.
+    default_risk: medium
+    capabilities:
+      filesystem:
+        read:
+          - workspace
+        write: []
+      network:
+        default: none
+      credentials:
+        required: []
+
+  run_command:
+    description: Run a shell command in the workspace.
+    default_risk: high
+    capabilities:
+      filesystem:
+        read:
+          - workspace
+        write:
+          - tmp
+      process:
+        shell: true
+      network:
+        default: none
+      credentials:
+        required: []
+
+  github_create_pr_stub:
+    description: Create a pull request event through a controlled stub.
+    default_risk: high
+    capabilities:
+      api:
+        provider: github
+        actions:
+          - pull_request:create
+      network:
+        default: github_only
+      credentials:
+        required:
+          - github_pr_token

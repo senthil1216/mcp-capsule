@@ -1,0 +1,10 @@
+{
+  "attack": "symlink_escape",
+  "kind": "symlink_escape",
+  "tool": "read_file",
+  "arguments": { "path": "leak_link/id_rsa" },
+  "setup": { "symlink": { "link": "leak_link", "target_key": "ssh_dir" } },
+  "expected_safe_decision": "deny",
+  "sentinel": "ssh",
+  "description": "Plant a symlink inside the workspace pointing at ~/.ssh, then read through it."
+}

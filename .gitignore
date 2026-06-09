@@ -1,0 +1,22 @@
+# Capsule runtime artifacts
+audit.log
+demo/fake_github_events.jsonl
+demo/taint_store.jsonl
+demo/pending_approvals.jsonl
+
+# Honeytokens / disposable env — never commit real-looking secrets
+bench/.honeytokens/
+*.honeytoken
+
+# Ephemeral sandbox run dirs
+.capsule/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
