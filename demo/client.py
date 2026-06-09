@@ -45,8 +45,9 @@ async def _run(tool: str, arguments: dict, workspace: str) -> dict:
 def _print(result: dict) -> None:
     decision = result.get("decision")
     print(f"\n=== Capsule decision: {str(decision).upper()} ===")
-    print(f"tool={result.get('tool')}  ok={result.get('ok')}  "
-          f"duration_ms={result.get('duration_ms')}")
+    print(
+        f"tool={result.get('tool')}  ok={result.get('ok')}  duration_ms={result.get('duration_ms')}"
+    )
     if result.get("requires_approval"):
         print(f"requires_approval=True  approval_state={result.get('approval_state')}")
     if result.get("taint_flags"):

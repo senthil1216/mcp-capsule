@@ -61,18 +61,26 @@ def cmd_approve(queue: ApprovalQueue, approval_id: str, events_path: Path | None
     # Scope is a SEPARATE axis: the broker can deny even an approved request.
     broker = broker_request(record.tool, record.requested_scope)
     if not broker.granted:
-        queue.resolve(approval_id, state="denied", granted_scope=None,
-                      event_ref=None, reason=broker.reason)
+        queue.resolve(
+            approval_id, state="denied", granted_scope=None, event_ref=None, reason=broker.reason
+        )
         _audit("denied", record, None, None, broker.reason)
         print(f"DENIED by credential broker: {broker.reason}. No event written.")
         return 1
 
     event_ref = execute_pr(
-        title=record.title, body=record.body, granted_scope=broker.scope,
+        title=record.title,
+        body=record.body,
+        granted_scope=broker.scope,
         events_path=events_path or _default_events(),
     )
-    queue.resolve(approval_id, state="approved", granted_scope=broker.scope,
-                  event_ref=event_ref, reason="scoped_grant")
+    queue.resolve(
+        approval_id,
+        state="approved",
+        granted_scope=broker.scope,
+        event_ref=event_ref,
+        reason="scoped_grant",
+    )
     _audit("approved", record, broker.scope, event_ref, "scoped_grant")
     print(f"APPROVED. Scope granted: {broker.scope}. Event: {event_ref}")
     return 0
@@ -83,8 +91,9 @@ def cmd_deny(queue: ApprovalQueue, approval_id: str) -> int:
     if record is None or record.state != "pending":
         print(f"No pending approval with id {approval_id}")
         return 1
-    queue.resolve(approval_id, state="denied", granted_scope=None,
-                  event_ref=None, reason="human_denied")
+    queue.resolve(
+        approval_id, state="denied", granted_scope=None, event_ref=None, reason="human_denied"
+    )
     _audit("denied", record, None, None, "human_denied")
     print(f"DENIED. No event written for {approval_id}.")
     return 0
@@ -92,6 +101,7 @@ def cmd_deny(queue: ApprovalQueue, approval_id: str) -> int:
 
 def _default_events():
     from tools.github_pr_stub import DEFAULT_EVENTS_PATH
+
     return DEFAULT_EVENTS_PATH
 
 

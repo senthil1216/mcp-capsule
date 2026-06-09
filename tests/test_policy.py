@@ -53,9 +53,7 @@ def test_precedence():
 def test_gateway_flow_emits_trace_and_diff():
     with tempfile.TemporaryDirectory() as d:
         gw = Gateway(audit_path=Path(d) / "audit.log")
-        result = gw.invoke(
-            ToolCall(call_id="c1", tool="run_command", arguments={"command": "ls"})
-        )
+        result = gw.invoke(ToolCall(call_id="c1", tool="run_command", arguments={"command": "ls"}))
         assert result.decision == Decision.SANDBOX
         assert result.trace is not None
         assert result.trace.final_decision == Decision.SANDBOX

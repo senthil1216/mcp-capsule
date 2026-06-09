@@ -21,8 +21,9 @@ from capsule.models import ToolResult
 from capsule.tools_loader import register_default_handlers
 
 
-def _build_call_arguments(tool: str, positionals: list[str], title: str | None,
-                          body: str | None) -> dict:
+def _build_call_arguments(
+    tool: str, positionals: list[str], title: str | None, body: str | None
+) -> dict:
     if tool == "read_file":
         return {"path": positionals[0]} if positionals else {}
     if tool == "run_command":
@@ -35,8 +36,10 @@ def _build_call_arguments(tool: str, positionals: list[str], title: str | None,
 
 def _print_result(result: ToolResult) -> None:
     print(f"\n=== Capsule decision: {result.decision.value.upper()} ===")
-    print(f"tool={result.tool}  call_id={result.call_id}  ok={result.ok}  "
-          f"duration_ms={result.duration_ms}")
+    print(
+        f"tool={result.tool}  call_id={result.call_id}  ok={result.ok}  "
+        f"duration_ms={result.duration_ms}"
+    )
     if result.requires_approval:
         print(f"requires_approval=True  approval_state={result.approval_state}")
     if result.taint_flags:
@@ -44,7 +47,7 @@ def _print_result(result: ToolResult) -> None:
     print("\n--- decision trace ---")
     if result.trace:
         for rule in result.trace.policy_evaluation:
-            print(f"  [{ 'x' if rule.matched else ' ' }] {rule.rule} -> {rule.effect}")
+            print(f"  [{'x' if rule.matched else ' '}] {rule.rule} -> {rule.effect}")
         print(f"  final_decision: {result.trace.final_decision.value}")
     print("\n--- capability diff ---")
     if result.diff:
@@ -55,7 +58,8 @@ def _print_result(result: ToolResult) -> None:
     if result.output:
         print(result.output)
     if result.content_ref:
-        print(f"\ncontent_ref={result.content_ref}  taint={result.taint.taint if result.taint else None}")
+        taint_val = result.taint.taint if result.taint else None
+        print(f"\ncontent_ref={result.content_ref}  taint={taint_val}")
 
 
 def main(argv: list[str] | None = None) -> int:

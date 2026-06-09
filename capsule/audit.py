@@ -7,10 +7,8 @@ state, granted scope.
 
 from __future__ import annotations
 
-import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 from capsule.models import AuditEvent
 
@@ -19,7 +17,7 @@ DEFAULT_AUDIT_PATH = _REPO_ROOT / "audit.log"
 
 
 def now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 class AuditLog:
@@ -40,5 +38,5 @@ class AuditLog:
         return self.path.read_text().splitlines()[-n:]
 
 
-def redact_optional(value: Optional[str]) -> Optional[str]:
+def redact_optional(value: str | None) -> str | None:
     return value

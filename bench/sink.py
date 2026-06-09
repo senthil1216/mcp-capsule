@@ -17,7 +17,6 @@ import json
 import threading
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Optional
 
 
 @dataclass
@@ -60,7 +59,7 @@ class RecordingSink:
     def __init__(self, host: str = "127.0.0.1", port: int = 0):
         self.state = SinkState()
         self._server = ThreadingHTTPServer((host, port), _make_handler(self.state))
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
 
     @property
     def port(self) -> int:
@@ -81,7 +80,7 @@ class RecordingSink:
     def hits_containing(self, needle: str) -> list[Hit]:
         return [h for h in self.state.hits if needle in h.body or needle in h.path]
 
-    def start(self) -> "RecordingSink":
+    def start(self) -> RecordingSink:
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
         self._thread.start()
         return self
@@ -92,7 +91,7 @@ class RecordingSink:
         if self._thread:
             self._thread.join(timeout=2)
 
-    def __enter__(self) -> "RecordingSink":
+    def __enter__(self) -> RecordingSink:
         return self.start()
 
     def __exit__(self, *exc) -> None:
