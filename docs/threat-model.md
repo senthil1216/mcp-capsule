@@ -33,8 +33,11 @@ radius of the resulting tool calls.
   (`~/.ssh`, `~/.aws`, `~/.kube`, `/etc`, the docker socket) are denied. *Measured:
   unsafe 100% reach → safe 0%.*
 - **Network exfil via shell.** `run_command` runs in a Docker sandbox with
-  `--network none` (Milestone D). The decision (`sandbox`, network denied) is
-  enforced at policy time regardless of runtime.
+  `--network none`, a read-only root, a non-root user, and an ephemeral copy of
+  the workspace (Milestone D). The decision (`sandbox`, network denied) is enforced
+  at policy time regardless of runtime; containment is *measured* by the bench
+  against a recording sink, with an egress-attribution control proving the sink is
+  reachable when networking is allowed. *Measured: network exfil blocked 1/1.*
 - **Exfil of already-read data via outbound/write tools.** Content-based taint:
   text returned by `read_file` is registered; if it later appears in a PR body or
   a network-bound command, the call is flagged / requires approval / is denied —

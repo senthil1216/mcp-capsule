@@ -25,10 +25,13 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["capsule", "tools", "bench", "demo"]
+packages = ["capsule", "tools", "bench", "demo", "sandbox"]
 
 [tool.pytest.ini_options]
-addopts = "-q"
+# Docker-marked integration tests are deselected by default so the base suite is
+# runtime-free and deterministic. Run them with `pytest -m docker` (or `make
+# test-docker`) on a machine with a container runtime.
+addopts = "-q -m 'not docker'"
 testpaths = ["tests"]
 markers = [
     "docker: integration tests that require a running container runtime",

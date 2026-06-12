@@ -32,14 +32,17 @@ Exfil is measured by a local recording sink, not asserted.
 Result (from `bench/REPORT.md`):
 
 - Direct secret reads: **unsafe 5/5 reached → safe 0/5**.
+- Network exfil via shell: **blocked 1/1** — `run_command` runs in a Docker
+  sandbox with `--network none`, measured against a recording sink.
 - Exfil-via-outbound (paste already-read notes into a PR body, declaring no
   provenance): **2/2 flagged or blocked** — `approval_required` for the PR body,
   `deny` for the network command.
 - Legitimate tasks: **0 false denies**.
 
-(The Docker sandbox for `run_command` isn't wired on my machine yet, so I report
-the network-exfil-blocked row and container overhead as *not yet measured* rather
-than faking them. The decision — `sandbox`, network denied — is shown regardless.)
+(The network-exfil block is *attributed*, not assumed: an egress control posts a
+token from a networked container — which arrives — and from a `--network none`
+container — which doesn't. So "no sink hit" is a real network block, not an
+unreachable-address artifact. Container startup shows up as the `p95` overhead.)
 
 ## The part that surprised me
 
@@ -84,6 +87,8 @@ container isolation.
 - Runtime controls reduce the blast radius of prompt-influenced tool calls.
 - On this local corpus, Capsule reduced measured secret reach from 100% (unsafe) to
   0% (safe).
+- On this corpus, network exfil via the sandboxed shell was blocked 1/1, with the
+  block attributed by an egress control (networked=reachable, --network none=blocked).
 - Provenance is needed because sandboxing alone doesn't address data that was
   already legitimately read and later sent to outbound/write tools.
 - Approval and scoped credentials are separate from container isolation.
@@ -92,4 +97,5 @@ container isolation.
 ## Repo
 
 `mcp-capsule` — gateway, MCP surface, content-based taint, approval + broker,
-apples-to-apples benchmark. `make test` (47 tests), `make bench`, `make demo`.
+apples-to-apples benchmark. `make test` (50 tests), `make test-docker` (sandbox
+integration), `make bench`, `make demo`.

@@ -117,7 +117,8 @@ def build_report(results: list[AttackReplayResult], modes: list[str]) -> str:
         p95 = _percentile(overhead, 95)
         lines.append(
             f"- `p50_overhead_ms`: {p50 if p50 is not None else _NA} "
-            "(gateway decision overhead; container-startup overhead needs the Milestone D sandbox)"
+            "(median reflects gateway decision overhead; sandboxed run_command "
+            "adds container-startup cost, visible at p95)"
         )
         lines.append(f"- `p95_overhead_ms`: {p95 if p95 is not None else _NA}")
     else:
