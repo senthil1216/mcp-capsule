@@ -52,6 +52,15 @@ arguments are matched against the store by **substring (either direction)** or
 **shingle overlap**. Enforcement fires on content; `source_refs` is an optional
 hint only and is never required. Lifecycle: per-session, cleared on restart.
 
+**Re-encoding resistance (Milestone E).** Before matching, each argument is
+expanded into candidate *views*: a normalized form (casefold + whitespace-collapse,
+defeating case/whitespace mangling) and speculatively decoded forms
+(base64/base64url, hex, URL percent-encoding, gzip+base64). Every view runs through
+the same substring/shingle logic, so a re-encoded secret still matches; the match
+records which `transform` exposed it. A bounded per-session buffer additionally
+reassembles a secret **split across multiple calls** (shingle union + in-order
+concatenation). Still evadable by lossy/keyed transforms (encryption, paraphrase).
+
 ## Module map
 
 | Module | Role |

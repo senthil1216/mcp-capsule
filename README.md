@@ -21,8 +21,9 @@ paths and exfil measured by a recording sink, not asserted):
 | `secret_reach_rate_unsafe` | **5/5 (100%)** |
 | `secret_reach_rate_safe` | **0/5 (0%)** |
 | `network_exfil_blocked` | **1/1 (100%)** |
-| `tainted_outbound_attempts` | 2 |
-| `tainted_outbound_flagged_or_blocked` | **2/2 (100%)** |
+| `tainted_outbound_attempts` | 6 |
+| `tainted_outbound_flagged_or_blocked` | **6/6 (100%)** |
+| `reencoded_taint_caught` | **4/4 (100%)** |
 | `allowed_task_success_rate` | 3/3 (100%) |
 | `false_denies` | 0 |
 
@@ -49,13 +50,18 @@ legitimately read a file, sandboxing does nothing to stop that content from bein
 pasted into a PR body or a `curl`. Capsule's **content-based** taint catches that
 second case — and it catches it even when the caller declares no provenance,
 because matching is on the actual content, not on a cooperative `source_refs` tag.
+As of Milestone E it also sees through the cheap evasions an exfil script reaches
+for first — base64 / hex / URL-encoding, gzip+base64, case/whitespace mangling,
+and a secret split across multiple calls — measured at `reencoded_taint_caught`
+4/4. It is still defeated by *lossy or keyed* transforms (encryption, semantic
+paraphrase); see below.
 
 ## Quick start
 
 ```sh
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev,mcp,sandbox]"
-make test          # 50 tests, runtime-free (docker integration tests deselected)
+make test          # 64 tests, runtime-free (docker integration tests deselected)
 make sandbox-image # build the run_command sandbox image (needs docker)
 make test-docker   # run_command sandbox integration tests (needs docker)
 make bench         # writes bench/REPORT.md (exercises the sandbox if docker is up)
@@ -89,8 +95,11 @@ Fixed decision vocabulary: `allow` · `deny` · `sandbox` · `approval_required`
 
 - Not a claim that prompt injection is solved — it isn't, and can't be.
 - Not hard isolation — Docker reduces blast radius; it is not a hardened sandbox.
-- Not full information-flow control — taint is content-matching, **evadable by
-  re-encoding**. Acknowledged future work.
+- Not full information-flow control — taint is content-matching. Milestone E
+  makes it resistant to common *reversible* re-encodings (base64/hex/URL/gzip,
+  case/whitespace, cross-call chunking), but it remains **evadable by lossy or
+  keyed transforms** — encryption with an attacker-held key, semantic paraphrase,
+  steganography. Acknowledged future work.
 - Not production-ready. v0.1 is a prototype with a measured result.
 
 See [docs/threat-model.md](docs/threat-model.md) for the trust boundary and the
@@ -102,9 +111,11 @@ v0.1. Built: capability gateway, MCP surface, `read_file` boundary, content-base
 taint, out-of-band approval + scoped credential broker, the Docker sandbox runner
 for `run_command` (Milestone D — `--network none`, read-only root, non-root,
 ephemeral workspace copy; execution gated behind `CAPSULE_SANDBOX_EXEC` so the
-base suite stays runtime-free), apples-to-apples benchmark. Deferred: re-encoding-
-resistant taint (base64/paraphrase evasion) and a transparent proxy for arbitrary
-MCP servers.
+base suite stays runtime-free), re-encoding-resistant taint (Milestone E —
+base64/hex/URL/gzip decode, case/whitespace normalization, cross-call chunk
+reassembly; measured at `reencoded_taint_caught` 4/4), apples-to-apples benchmark.
+Deferred: taint resistant to lossy/keyed transforms (encryption, paraphrase) and a
+transparent proxy for arbitrary MCP servers.
 
 ## License
 

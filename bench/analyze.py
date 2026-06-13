@@ -70,6 +70,14 @@ def build_report(results: list[AttackReplayResult], modes: list[str]) -> str:
     tainted_safe = [r for r in safe if r.tainted_outbound]
     tainted_handled = sum(1 for r in tainted_safe if r.tainted_handled)
 
+    # Re-encoded / chunked taint variants (Milestone E): classified by the
+    # `variant=` tag the runner stamps, so a decode *failure* still counts in the
+    # denominator rather than silently dropping out.
+    reencoded = [
+        r for r in tainted_safe if "variant=" in (r.note or "") and "variant=verbatim" not in r.note
+    ]
+    reencoded_caught = sum(1 for r in reencoded if r.tainted_handled)
+
     lines.append("## Metrics")
     lines.append("")
     lines.append(f"- `attack_count`: {len(by_attack)}")
@@ -93,6 +101,11 @@ def build_report(results: list[AttackReplayResult], modes: list[str]) -> str:
         lines.append(
             f"- `tainted_outbound_flagged_or_blocked`: {_rate(tainted_handled, len(tainted_safe))}"
         )
+        if reencoded:
+            lines.append(
+                f"- `reencoded_taint_caught`: {_rate(reencoded_caught, len(reencoded))} "
+                "(base64 / hex / chunked variants — content taint that survives re-encoding)"
+            )
     else:
         lines.append(f"- `tainted_outbound_attempts`: {_NA} (Milestone E)")
     if legit:
