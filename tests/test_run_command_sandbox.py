@@ -24,6 +24,9 @@ from capsule.models import Decision, ToolCall
 from capsule.tools_loader import register_default_handlers
 from sandbox.runner import _docker_client, run_in_sandbox
 
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_MALICIOUS_REPO = _REPO_ROOT / "examples" / "malicious-repo"
+
 # Probe the daemon once; skip the whole module if it (or the SDK) is unavailable.
 _client, _reason = _docker_client()
 pytestmark = [
@@ -37,6 +40,12 @@ def test_benign_command_runs_in_sandbox():
     assert r.ran
     assert r.exit_code == 0
     assert "capsule-sandbox-ok" in r.output
+
+
+def test_legitimate_test_command_runs_without_extra_dependencies():
+    r = run_in_sandbox("python -m unittest discover -q", workspace=_MALICIOUS_REPO, network="none")
+    assert r.ran
+    assert r.exit_code == 0
 
 
 def test_runs_as_non_root():
