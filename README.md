@@ -20,6 +20,7 @@ paths and exfil measured by a recording sink, not asserted):
 |---|---|
 | `secret_reach_rate_unsafe` | **5/5 (100%)** |
 | `secret_reach_rate_safe` | **0/5 (0%)** |
+| `network_exfil_blocked` | **1/1 (100%)** |
 | `tainted_outbound_attempts` | 2 |
 | `tainted_outbound_flagged_or_blocked` | **2/2 (100%)** |
 | `allowed_task_success_rate` | 3/3 (100%) |
@@ -27,9 +28,12 @@ paths and exfil measured by a recording sink, not asserted):
 
 The numbers above are produced by `make bench` and written to
 [`bench/REPORT.md`](bench/REPORT.md) — they are not hand-typed. The Docker sandbox
-for `run_command` (Milestone D) is not yet wired on this machine, so the
-network-exfil-blocked row and container-startup overhead are reported as *not yet
-measured* rather than asserted.
+for `run_command` (Milestone D) now runs the corpus: exfil is contained by
+`--network none` and measured against a recording sink. An **egress-attribution
+control** posts a token from a networked container (must arrive) and a
+`--network none` container (must not), so a blocked result is a real network block,
+not an artifact of an unreachable address. Container startup is the `p95` overhead
+in the report.
 
 ## The two-attack insight
 
@@ -50,9 +54,11 @@ because matching is on the actual content, not on a cooperative `source_refs` ta
 
 ```sh
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev,mcp]"
-make test          # 47 tests
-make bench         # writes bench/REPORT.md
+pip install -e ".[dev,mcp,sandbox]"
+make test          # 50 tests, runtime-free (docker integration tests deselected)
+make sandbox-image # build the run_command sandbox image (needs docker)
+make test-docker   # run_command sandbox integration tests (needs docker)
+make bench         # writes bench/REPORT.md (exercises the sandbox if docker is up)
 make demo          # end-to-end walkthrough (< 5 min)
 ```
 
@@ -93,9 +99,12 @@ full list of non-goals.
 ## Status
 
 v0.1. Built: capability gateway, MCP surface, `read_file` boundary, content-based
-taint, out-of-band approval + scoped credential broker, apples-to-apples
-benchmark. Deferred: the Docker sandbox runner for `run_command` (needs a local
-container runtime — see the Milestone D note).
+taint, out-of-band approval + scoped credential broker, the Docker sandbox runner
+for `run_command` (Milestone D — `--network none`, read-only root, non-root,
+ephemeral workspace copy; execution gated behind `CAPSULE_SANDBOX_EXEC` so the
+base suite stays runtime-free), apples-to-apples benchmark. Deferred: re-encoding-
+resistant taint (base64/paraphrase evasion) and a transparent proxy for arbitrary
+MCP servers.
 
 ## License
 

@@ -81,7 +81,7 @@ async def _run() -> None:
 
         _line("Summary")
         print("  Direct secret read      : blocked by the workspace boundary")
-        print("  Network exfil           : decision=sandbox, network denied (exec needs runtime)")
+        print("  Network exfil           : decision=sandbox, contained by --network none")
         print("  Exfil via PR body       : caught by CONTENT taint -> approval_required")
         print("\n  Release/deny the pending PR with:  capsule-approve list / deny <id>")
 

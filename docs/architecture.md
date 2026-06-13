@@ -66,6 +66,6 @@ hint only and is never required. Lifecycle: per-session, cleared on restart.
 | `capsule/approvals.py` + `capsule/approve.py` | Out-of-band approval queue + CLI |
 | `capsule/audit.py` | Structured audit log |
 | `capsule/mcp_server.py` | FastMCP tool surface |
-| `tools/` | read_file, run_command (D), github_pr_stub handlers |
-| `sandbox/` | Docker runner (Milestone D) |
+| `tools/` | read_file, sandboxed run_command, github_pr_stub handlers |
+| `sandbox/` | Docker runner: hardened container (`--network none`, read-only root, non-root, ephemeral workspace copy) + Dockerfile |
 | `bench/` | honeytokens, sink, runner, analyze, corpus |
