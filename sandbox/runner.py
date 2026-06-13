@@ -123,6 +123,22 @@ def image_available(client) -> bool:
         return False
 
 
+def _make_ephemeral_copy_accessible(path: Path) -> None:
+    """Make the throwaway workspace usable by the fixed non-root container UID.
+
+    Host temp directories are commonly 0700. The container deliberately runs as
+    uid 1000, which may not match the host owner in CI, so permission-preserving
+    copies can become unreadable once bind-mounted. This only touches the
+    ephemeral copy, and it never follows symlinks.
+    """
+    if not path.is_symlink():
+        path.chmod(0o777)
+    for child in path.rglob("*"):
+        if child.is_symlink():
+            continue
+        child.chmod(0o777 if child.is_dir() else 0o666)
+
+
 def run_in_sandbox(
     command: str,
     workspace: str | Path | None = None,
@@ -186,6 +202,7 @@ def run_in_sandbox(
         tmp_ws = tempfile.mkdtemp(prefix="ws-", dir=str(_EPHEMERAL_ROOT))
         dest = Path(tmp_ws) / "workspace"
         shutil.copytree(workspace, dest, symlinks=True, dirs_exist_ok=True, ignore=_COPY_IGNORE)
+        _make_ephemeral_copy_accessible(dest)
         volumes[str(dest)] = {"bind": "/workspace", "mode": "rw"}
         params["workspace"] = "/workspace (ephemeral copy)"
 
