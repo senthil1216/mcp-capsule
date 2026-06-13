@@ -152,17 +152,32 @@ def test_direct_hit_does_not_leak_into_a_later_clean_call():
 
 
 def test_gzip_bomb_is_bounded_and_not_matched():
-    # A small base64 payload that inflates far past the cap must neither match nor
-    # materialize its full output. _try_gunzip reads at most cap+1 bytes.
+    # A ~1 GiB decompression bomb must neither match nor materialize its full
+    # output: _try_gunzip streams and reads at most cap+1 bytes, so both peak
+    # memory and CPU stay bounded regardless of the inflated size.
+    import io
     import time
+    import tracemalloc
 
     from capsule.taint import _MAX_DECODED_BYTES, _try_gunzip
 
-    bomb = gzip.compress(b"\x00" * (_MAX_DECODED_BYTES * 64))
+    # Build the bomb in 1 MiB chunks so the test itself never holds the gigabyte.
+    buf = io.BytesIO()
+    with gzip.GzipFile(fileobj=buf, mode="wb") as gz:
+        for _ in range(1024):
+            gz.write(b"\x00" * (1024 * 1024))  # 1 GiB logical, 1 MiB at a time
+    bomb = buf.getvalue()
+
+    tracemalloc.start()
     started = time.perf_counter()
     out = _try_gunzip(bomb)
+    elapsed = time.perf_counter() - started
+    _, peak = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+
     assert len(out) <= _MAX_DECODED_BYTES + 1  # never the full inflated stream
-    assert time.perf_counter() - started < 5  # and it returns promptly
+    assert peak < 16 * 1024 * 1024  # peak alloc bounded, not ~1 GiB
+    assert elapsed < 5  # and it returns promptly
     blob = base64.b64encode(bomb).decode()
     s = _store()
     assert s.match(f"payload={blob}") == []  # over-cap output is rejected as text
