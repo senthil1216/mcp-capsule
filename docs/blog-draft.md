@@ -35,8 +35,10 @@ Result (from `bench/REPORT.md`):
 - Network exfil via shell: **blocked 1/1** — `run_command` runs in a Docker
   sandbox with `--network none`, measured against a recording sink.
 - Exfil-via-outbound (paste already-read notes into a PR body, declaring no
-  provenance): **2/2 flagged or blocked** — `approval_required` for the PR body,
-  `deny` for the network command.
+  provenance): **6/6 flagged or blocked** — `approval_required` for the PR body,
+  `deny` for the network command, including base64 / hex / chunked variants.
+- Re-encoded exfil (base64, hex, split-across-calls): **4/4 caught** — content
+  taint that survives the cheap reversible evasions (Milestone E).
 - Legitimate tasks: **0 false denies**.
 
 (The network-exfil block is *attributed*, not assumed: an egress control posts a
@@ -58,8 +60,15 @@ won't honestly declare provenance; it'll just paste the secret. Matching on
 content, not on declarations, is what makes the second result real instead of
 theater.
 
-Honest limit: this is minimal provenance by content matching, **not** full
-information-flow control. Base64 or a light paraphrase evades it. That's
+It also sees through the cheap evasions an exfil script reaches for first:
+base64 / hex / URL-encoding and gzip+base64 are speculatively decoded, case and
+whitespace are normalized away, and a secret dribbled out across several calls is
+caught by reassembling a bounded per-session buffer (Milestone E, measured 4/4).
+
+Honest limit: this is still minimal provenance by content matching, **not** full
+information-flow control. It's defeated by *lossy or keyed* transforms —
+encryption with a key you don't hold, a genuine paraphrase, steganography —
+because the secret is no longer recoverable from what crosses the boundary. That's
 acknowledged future work.
 
 ## Capability diff + audit
@@ -78,8 +87,10 @@ container isolation.
 - Not "this prevents prompt injection."
 - Not "Docker makes hostile code safe."
 - Not "production-ready isolation."
-- Not "taint tracking is complete" — it's minimal provenance, evadable by
-  re-encoding.
+- Not "taint tracking is complete" — it's minimal provenance. It resists cheap
+  *reversible* re-encodings (base64/hex/URL/gzip, case/whitespace, cross-call
+  chunking) but is still evadable by lossy or keyed transforms (encryption,
+  paraphrase).
 
 ## Allowed claims
 
@@ -89,6 +100,8 @@ container isolation.
   0% (safe).
 - On this corpus, network exfil via the sandboxed shell was blocked 1/1, with the
   block attributed by an egress control (networked=reachable, --network none=blocked).
+- Content taint survives the cheap reversible evasions: base64 / hex / chunked
+  exfil were caught 4/4 (`reencoded_taint_caught`).
 - Provenance is needed because sandboxing alone doesn't address data that was
   already legitimately read and later sent to outbound/write tools.
 - Approval and scoped credentials are separate from container isolation.
@@ -96,6 +109,6 @@ container isolation.
 
 ## Repo
 
-`mcp-capsule` — gateway, MCP surface, content-based taint, approval + broker,
-apples-to-apples benchmark. `make test` (50 tests), `make test-docker` (sandbox
-integration), `make bench`, `make demo`.
+`mcp-capsule` — gateway, MCP surface, re-encoding-resistant content taint,
+approval + broker, apples-to-apples benchmark. `make test` (64 tests),
+`make test-docker` (sandbox integration), `make bench`, `make demo`.

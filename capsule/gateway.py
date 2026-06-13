@@ -37,7 +37,7 @@ from capsule.models import (
 from capsule.policy import PolicyEngine
 from capsule.redaction import redact
 from capsule.registry import load_manifest, load_policy
-from capsule.taint import TaintStore
+from capsule.taint import TaintMatch, TaintStore
 
 # Arguments on these tools are scanned against the taint store (outbound/write
 # surfaces). read_file is a taint *source*, not a sink.
@@ -90,11 +90,20 @@ class Gateway:
     def invoke(self, call: ToolCall) -> ToolResult:
         start = time.perf_counter()
 
+        # Scan outbound args for tainted content exactly once: scan_outbound
+        # mutates the cross-call reassembly buffer, so a second scan would
+        # double-record. The same matches drive both the decision and the audit.
+        taint_matches = (
+            self.taint.scan_outbound(self._string_args(call))
+            if call.tool in _OUTBOUND_WRITE_TOOLS
+            else []
+        )
+
         decision = self.engine.evaluate(call)
-        decision = self._apply_dynamic_policy(call, decision)
+        decision = self._apply_dynamic_policy(call, decision, taint_matches)
         diff = build_diff(self.manifest, call, decision)
 
-        taint_flags = self._collect_taint_flags(call)
+        taint_flags = self._format_taint_flags(taint_matches)
 
         approval_id: str | None = None
         if decision.decision in _EXECUTING_DECISIONS:
@@ -170,22 +179,30 @@ class Gateway:
             )
         return handler(call, self)
 
-    def _collect_taint_flags(self, call: ToolCall) -> list[str]:
-        """Surface which content_refs matched, for the audit record."""
-        if call.tool not in _OUTBOUND_WRITE_TOOLS:
-            return []
+    @staticmethod
+    def _format_taint_flags(matches: list[TaintMatch]) -> list[str]:
+        """Audit flags from precomputed matches.
+
+        Format is `{taint}:{content_ref}:{kind}`; the transform is appended only
+        when it is not the verbatim ("raw") match, so existing flags are
+        unchanged and a re-encoded hit reads e.g. `...:substring:base64`.
+        """
         flags: list[str] = []
-        for value in self._string_args(call):
-            for m in self.taint.match(value):
-                flags.append(f"{m.taint}:{m.content_ref}:{m.kind}")
+        for m in matches:
+            flag = f"{m.taint}:{m.content_ref}:{m.kind}"
+            if m.transform != "raw":
+                flag += f":{m.transform}"
+            flags.append(flag)
         return sorted(set(flags))
 
-    def _apply_dynamic_policy(self, call: ToolCall, decision: PolicyDecision) -> PolicyDecision:
+    def _apply_dynamic_policy(
+        self, call: ToolCall, decision: PolicyDecision, taint_matches: list[TaintMatch]
+    ) -> PolicyDecision:
         """Per-call conditions that can change the static decision:
         the read_file workspace boundary and content-based taint escalation."""
         if call.tool == "read_file":
             decision = self._apply_read_file_boundary(call, decision)
-        decision = self._apply_taint(call, decision)
+        decision = self._apply_taint(call, decision, taint_matches)
         return decision
 
     def _apply_read_file_boundary(self, call: ToolCall, decision: PolicyDecision) -> PolicyDecision:
@@ -198,17 +215,17 @@ class Gateway:
             return self.engine.escalate(decision, Decision.DENY, f"read_file:{verdict.reason}")
         return decision
 
-    def _apply_taint(self, call: ToolCall, decision: PolicyDecision) -> PolicyDecision:
-        """Content-based taint escalation (wired fully in Milestone E).
+    def _apply_taint(
+        self, call: ToolCall, decision: PolicyDecision, taint_matches: list[TaintMatch]
+    ) -> PolicyDecision:
+        """Content-based taint escalation.
 
         If any outbound/write argument contains content registered in the taint
-        store, escalate per policy: PR body -> approval_required, network-enabled
+        store — verbatim, re-encoded, or reassembled across calls (Milestone E) —
+        escalate per policy: PR body -> approval_required, network-enabled
         command -> deny, local command -> flag.
         """
-        if call.tool not in _OUTBOUND_WRITE_TOOLS:
-            return decision
-        tainted = any(self.taint.is_tainted(v) for v in self._string_args(call))
-        if not tainted:
+        if call.tool not in _OUTBOUND_WRITE_TOOLS or not taint_matches:
             return decision
 
         if call.tool == "github_create_pr_stub":

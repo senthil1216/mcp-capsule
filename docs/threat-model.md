@@ -52,10 +52,14 @@ radius of the resulting tool calls.
   and side channels are out of scope. Capsule reduces blast radius; it is not a
   hardened multi-tenant sandbox.
 - **Taint is content-matching, not full information-flow control.** Matching is by
-  substring / shingle-hash on the actual content. It is **evadable by re-encoding
-  or transforming** the data (base64, character substitution, summarization)
-  before it reaches the outbound tool. This is acknowledged future work, not a
-  solved problem.
+  substring / shingle-hash on the actual content. Milestone E hardens it against
+  the cheap *reversible* evasions — base64 / hex / URL-encoding and gzip+base64
+  (speculative decode), case/whitespace mangling (normalization), and a secret
+  split across multiple calls (bounded per-session reassembly); measured at
+  `reencoded_taint_caught` 4/4. It remains **evadable by lossy or keyed
+  transforms** — encryption with an attacker-held key, semantic paraphrase /
+  summarization, steganography — because the bytes no longer derive recoverably
+  from the secret. This is acknowledged future work, not a solved problem.
 - **MCP fidelity limits.** Capsule exposes a representative tool surface, not a
   transparent proxy for arbitrary MCP servers.
 - **Not production-ready.** v0.1 is a prototype to demonstrate the architecture and
