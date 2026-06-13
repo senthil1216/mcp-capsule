@@ -43,6 +43,7 @@ import base64
 import binascii
 import gzip
 import hashlib
+import io
 import re
 from collections import deque
 from dataclasses import dataclass, field
@@ -159,8 +160,12 @@ def _try_gunzip(b: bytes) -> bytes | None:
     if not b.startswith(_GZIP_MAGIC):
         return None
     try:
-        # Bounded read so a zip-bomb can't exhaust memory.
-        return gzip.decompress(b)[: _MAX_DECODED_BYTES + 1]
+        # Stream the decompression and read at most one byte past the cap, so a
+        # decompression bomb can never materialize its full output: gzip.decompress
+        # would inflate the whole stream before any slice could apply. Reading
+        # cap+1 lets `_maybe_text` reject anything over the cap.
+        with gzip.GzipFile(fileobj=io.BytesIO(b)) as gz:
+            return gz.read(_MAX_DECODED_BYTES + 1)
     except (OSError, EOFError, ValueError):
         return None
 
@@ -327,16 +332,21 @@ class TaintStore:
 
         Stateful — call exactly once per outbound tool invocation. Returns
         per-value matches plus any *chunked* match recovered by reassembling the
-        recent buffer (catches a secret split across multiple calls). Each value's
-        candidate views are normalized and appended to the buffer; a chunked match
-        is reported only when no single value matched on its own, so the buffer
-        adds detections rather than relabeling direct hits.
+        recent buffer (catches a secret split across multiple calls).
+
+        Only values that did NOT match on their own are buffered: the buffer
+        exists to accumulate sub-threshold *fragments*. Buffering a value that
+        already matched directly would let a later clean call rediscover that full
+        secret as a (false) chunked hit — escalating innocent calls until the
+        entry evicts — so a direct hit is never remembered.
         """
         direct: list[TaintMatch] = []
         for value in values:
-            direct.extend(self.match(value))
-            for _, text in [("raw", value), *_decode_views(value)]:
-                self._remember(_normalize(text))
+            value_matches = self.match(value)
+            direct.extend(value_matches)
+            if not value_matches:
+                for _, text in [("raw", value), *_decode_views(value)]:
+                    self._remember(_normalize(text))
 
         matched_refs = {m.content_ref for m in direct}
         chunked = [m for m in self._match_accumulated() if m.content_ref not in matched_refs]
