@@ -110,5 +110,5 @@ container isolation.
 ## Repo
 
 `mcp-capsule` — gateway, MCP surface, re-encoding-resistant content taint,
-approval + broker, apples-to-apples benchmark. `make test` (64 tests),
+approval + broker, apples-to-apples benchmark. `make test` (66 tests),
 `make test-docker` (sandbox integration), `make bench`, `make demo`.

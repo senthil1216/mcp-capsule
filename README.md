@@ -61,7 +61,7 @@ paraphrase); see below.
 ```sh
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev,mcp,sandbox]"
-make test          # 64 tests, runtime-free (docker integration tests deselected)
+make test          # 66 tests, runtime-free (docker integration tests deselected)
 make sandbox-image # build the run_command sandbox image (needs docker)
 make test-docker   # run_command sandbox integration tests (needs docker)
 make bench         # writes bench/REPORT.md (exercises the sandbox if docker is up)
