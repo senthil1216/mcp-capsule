@@ -56,6 +56,15 @@ and a secret split across multiple calls — measured at `reencoded_taint_caught
 4/4. It is still defeated by *lossy or keyed* transforms (encryption, semantic
 paraphrase); see below.
 
+**Where the secret lives.** The bundled demo co-locates the sensitive file
+(`examples/malicious-repo/SECRETISH_NOTES.md`) inside the malicious repo so a single
+directory tells the whole story — but that co-location is a convenience, not the
+threat model. The attacker authors only the *injection* (the untrusted README); the
+secret it exfiltrates is independent and typically lives **outside** that repo —
+another repository the agent can read, a host credential like `~/.aws/credentials`,
+or the result of an earlier tool call. Taint behaves identically wherever the
+content originated, because it keys on the content itself, not on its origin.
+
 ## Quick start
 
 ```sh

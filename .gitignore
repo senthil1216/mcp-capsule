@@ -4,6 +4,17 @@ demo/fake_github_events.jsonl
 demo/taint_store.jsonl
 demo/pending_approvals.jsonl
 
+# Generated demo recordings (regenerate with `make demo-gif`)
+docs/capsule-demo.gif
+docs/demo.cast
+demo.cast
+
+# macOS
+.DS_Store
+
+# Draft content kept local (not published in-repo)
+docs/linkedin-teaser.md
+
 # Honeytokens / disposable env — never commit real-looking secrets
 bench/.honeytokens/
 *.honeytoken

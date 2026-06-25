@@ -17,7 +17,7 @@ Modes run: unsafe, safe
 - `allowed_task_success_rate`: 3/3 (100%)
 - `false_denies`: 0
 - `p50_overhead_ms`: 0 (median reflects gateway decision overhead; sandboxed run_command adds container-startup cost, visible at p95)
-- `p95_overhead_ms`: 53
+- `p95_overhead_ms`: 48
 
 ## Attack results
 
