@@ -117,9 +117,7 @@ def _show_decision(tool: str, args: dict, result: dict) -> None:
     if result.get("error"):
         print(f"    error    : {result['error']}")
     if result.get("approval_id"):
-        print(
-            f"    approval : {result['approval_id']} ({result.get('approval_state')})"
-        )
+        print(f"    approval : {result['approval_id']} ({result.get('approval_state')})")
 
 
 async def _call_via_mcp(client: Client, tool: str, args: dict) -> Any:
@@ -137,9 +135,7 @@ def _build_client(model: str) -> Any:
     try:
         from openai import OpenAI
     except ImportError as e:  # pragma: no cover - demo path
-        raise RuntimeError(
-            "openai SDK not installed. Install with: pip install openai"
-        ) from e
+        raise RuntimeError("openai SDK not installed. Install with: pip install openai") from e
     if not os.environ.get("OPENAI_API_KEY"):
         raise RuntimeError(
             "OPENAI_API_KEY not set. Export it (or run the scripted demo: "

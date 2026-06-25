@@ -8,6 +8,9 @@ demo/pending_approvals.jsonl
 docs/capsule-demo.gif
 docs/demo.cast
 
+# Draft content kept local (not published in-repo)
+docs/linkedin-teaser.md
+
 # Honeytokens / disposable env — never commit real-looking secrets
 bench/.honeytokens/
 *.honeytoken
