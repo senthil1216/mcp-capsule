@@ -87,7 +87,39 @@ python -m demo.injection_demo                             # the whole story, one
 
 ## How it works
 
-Every call flows through `Gateway.invoke()`:
+Every call flows through `Gateway.invoke()` — the single enforcement point. A
+`read_file` result is registered in the taint store; every outbound/write
+argument is checked against it, so already-read data is caught on the way out.
+
+```mermaid
+flowchart TD
+    AG["AI agent<br/>(possibly prompt-injected)"] --> MCP["MCP surface<br/>read_file · run_command · github_create_pr_stub"]
+    MCP --> G["Gateway.invoke()"]
+
+    G --> SP["Static policy<br/>per-tool decision + trace"]
+    SP --> DP["Dynamic policy"]
+    DP --> FB["read_file workspace boundary<br/>escape / host-secret → deny"]
+    DP --> TT["content-based taint<br/>outbound args vs. store"]
+
+    G -.->|"read_file result:<br/>register sha256 + shingles"| TS[("Taint store<br/>per-session")]
+    TS -.->|"check outbound args"| TT
+
+    DP --> DEC{"Decision<br/>most restrictive wins"}
+    DEC -->|allow / flag| EX["execute handler"]
+    DEC -->|sandbox| SB["hardened container<br/>--network none · read-only · non-root"]
+    DEC -->|approval_required| AQ["out-of-band approval queue"]
+    DEC -->|deny| ER["structured denial<br/>(never executes)"]
+
+    EX --> AU[("Audit log<br/>one event per call")]
+    SB --> AU
+    AQ --> AU
+    ER --> AU
+
+    classDef enforcement fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20;
+    class G,SP,DP,FB,TT enforcement;
+```
+
+Step by step:
 
 1. **Policy** — static per-tool decision + a decision trace.
 2. **Dynamic policy** — `read_file` workspace boundary; content-based taint
