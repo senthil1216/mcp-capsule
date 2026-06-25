@@ -1,4 +1,4 @@
-.PHONY: help install test test-docker bench demo clean sandbox-image
+.PHONY: help install test test-docker bench demo demo-gif clean sandbox-image
 
 help:
 	@echo "Capsule — a capability gateway for MCP tools"
@@ -9,6 +9,7 @@ help:
 	@echo "  make sandbox-image  build the run_command sandbox image (Milestone D)"
 	@echo "  make bench          run the attack corpus (unsafe + safe) -> bench/REPORT.md"
 	@echo "  make demo           run the end-to-end demo script"
+	@echo "  make demo-gif       render a reproducible demo GIF from docs/demo.tape (needs vhs)"
 	@echo "  make clean          remove caches and runtime artifacts"
 
 install:
@@ -31,7 +32,12 @@ bench:
 demo:
 	bash docs/demo.sh
 
+demo-gif:
+	vhs docs/demo.tape
+	@echo ""
+	@echo "GIF: docs/capsule-demo.gif"
+
 clean:
 	rm -rf .pytest_cache **/__pycache__ audit.log \
 	       demo/pending_approvals.jsonl demo/fake_github_events.jsonl \
-	       demo/taint_store.jsonl bench/.honeytokens
+	       demo/taint_store.jsonl bench/.honeytokens docs/capsule-demo.gif docs/demo.cast
